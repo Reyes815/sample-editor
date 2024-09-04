@@ -15,8 +15,6 @@ const BpmnDiagram = () => {
     // Step 2: Locate the <bpmn2:startEvent> element
     const startEvent = xmlDoc.getElementsByTagName('bpmn2:startEvent')[0];
 
-    const endEvent = xmlDoc.getElementsByTagName('bpmn2:endEvent')[0];
-
     // Initialize an array to store activities and sequence flows
     const activities = [];
     const sequenceFlows = [];
@@ -25,10 +23,8 @@ const BpmnDiagram = () => {
 
 
     // Step 3: Extract and store the id attribute
-    if (startEvent && endEvent) {
+    if (startEvent) {
       const startEventId = startEvent.getAttribute('id');
-
-      const endEventId = endEvent.getAttribute('id');
 
       // Get all sequence flows
       const flows = xmlDoc.getElementsByTagName('bpmn2:sequenceFlow');
@@ -55,6 +51,24 @@ const BpmnDiagram = () => {
         }
       }
 
+      // Extract exclusive gateways
+      const gatewayElements = xmlDoc.getElementsByTagName('bpmn2:exclusiveGateway');
+      for (let gateway of gatewayElements) {
+        const id = gateway.getAttribute('id');
+        const name = gateway.getAttribute('name');
+        gateways.push({ id, name });
+      }
+
+      // Extract end events
+      const endEventElements = xmlDoc.getElementsByTagName('bpmn2:endEvent');
+      for (let endEvent of endEventElements) {
+        const id = endEvent.getAttribute('id');
+        // const name = endEvent.getAttribute('name');
+        // if (name) {
+        endEvents.push({ id });
+        // }
+      }
+
       // Check if every activity is connected by a sequence flow
       for (let activity of activities) {
         const isConnected = sequenceFlows.some(flow => 
@@ -67,7 +81,7 @@ const BpmnDiagram = () => {
         }
       }
 
-      return { startEventId, endEventId, activities, sequenceFlows };
+      return { startEventId, endEvents, activities, sequenceFlows, gateways };
 
     } else {
       console.error('Start Event not found!');
@@ -75,17 +89,22 @@ const BpmnDiagram = () => {
   };
 
   const translateToPlantUML = (data) => {
-    if (!data || !data.startEventId || !data.endEventId) {
-      return '@startuml\nNo start or end event found\n@enduml';
-    }
+    // if (!data || !data.startEventId || !data.endEventId) {
+    //   return '@startuml\nNo start or end event found\n@enduml';
+    // }
   
     // Start with basic PlantUML BPMN syntax
     let plantUML = '@startuml\n';
   
     // Add the start event flow
-    if (data.activities.length > 0) {
-      plantUML += `(*) --> "${data.activities[0].name}"\n`;
-    }
+    // if (data.activities.length > 0) {
+    //   plantUML += `(*) --> "${data.activities[0].name}"\n`;
+    // }
+
+    // Add the start event flow
+    // if (data.gateways.length > 0) {
+    //   plantUML += `(*) --> "${data.gateways[0].name}"\n`;
+    // }
 
   
     // Add each activity as a PlantUML action
@@ -94,19 +113,52 @@ const BpmnDiagram = () => {
     // });
 
     // Add sequence flows between activities
+    let decision_count = 0;
     data.sequenceFlows.forEach(flow => {
+      const sourceStart = data.startEventId;
+      const targetEnd = data.endEvents.find(end => end.id === flow.targetRef);
       const sourceActivity = data.activities.find(activity => activity.id === flow.sourceRef);
       const targetActivity = data.activities.find(activity => activity.id === flow.targetRef);
+      const sourceGateway = data.gateways.find(g => g.id === flow.sourceRef);
+      const targetGateway = data.gateways.find(g => g.id === flow.targetRef);
+
+
+      if(targetGateway && sourceStart === flow.sourceRef){
+        plantUML += `(*) --> if "${targetGateway.name}" then\n`
+        // plantUML += `if "${sourceGateway.name}" then`
+      }
 
       if (sourceActivity && targetActivity) {
-        plantUML += `"${sourceActivity.name}" --> "${targetActivity.name}"\n`;
+        // if(sourceActivity.id === data.startEventId){
+        //   plantUML += `(*) --> "${targetActivity.name}"\n`
+        // } else {
+          plantUML += `"${sourceActivity.name}" --> "${targetActivity.name}"\n`;
+        // }
+      }
+
+      if(sourceActivity && targetEnd) {
+          plantUML += `"${sourceActivity.name}" --> (*)\n`;
+      }
+
+      if(sourceGateway) {
+        // if(targetGateway.id === sourceStart){
+          plantUML += `-->[${flow.name}] "${targetActivity.name}"\n`;
+          decision_count++;
+
+          if(decision_count == 1){
+            plantUML += `else\n`;
+          }
+          // plantUML += `if "${sourceGateway.name}" then`
+        // }
       }
     });
 
-    // Add the end event flow
-    if (data.activities.length > 0) {
-      plantUML += `"${data.activities[data.activities.length - 1].name}" --> (*)\n`;
-    }
+    // Add end events
+    // const endEvents = data.endEvents || [];
+    // endEvents.forEach(endEvent => {
+    //   plantUML += `"${endEvent.name}" --> (*)\n`;
+    // });
+
   
     // End the diagram
     plantUML += '@enduml';
