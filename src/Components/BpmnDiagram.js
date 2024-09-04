@@ -2,11 +2,17 @@ import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css';
 import 'bpmn-js/dist/assets/diagram-js.css';
 import BpmnJS from 'bpmn-js/dist/bpmn-modeler.development.js';
 import React, { useEffect, useRef, useState } from 'react';
+import ImportDiagram from './importDiagram';
 
 const BpmnDiagram = () => {
+  const [fileContent, setFileContent] = useState('');
 
   const modeler = useRef(null);
 
+  const handleFileSelect = (content) => {
+    setFileContent(content);
+    openImportedDiagram(content);
+  };
   const parseXML = (xmlString) => {
     // Parse XML string to DOM
     const parser = new DOMParser();
@@ -129,6 +135,17 @@ const BpmnDiagram = () => {
     }
   };
 
+  const openImportedDiagram = async (diagram) => {
+    
+    try {
+      await modeler.current.importXML(diagram);
+      const canvas = modeler.current.get('canvas');
+      canvas.zoom('fit-viewport');
+    } catch (err) {
+      console.error('Error importing diagram:', err);
+    }
+  };
+
   const saveDiagram = async () => {
     try {
       const { xml } = await modeler.current.saveXML({ format: true });
@@ -176,6 +193,13 @@ const BpmnDiagram = () => {
       <h1>BPMN Diagram Modeler</h1>
       <div id="canvas" style={{ width: '100%', height: '600px', border: '1px solid black' }}></div>
       <button onClick={saveDiagram}>Save Diagram</button>
+      <ImportDiagram onFileSelect={handleFileSelect} />
+      {/* {fileContent && (
+        <div>
+          <h2>Uploaded File Content:</h2>
+          <pre>{fileContent}</pre>
+        </div>
+      )} */}
     </div>
   );
 };
