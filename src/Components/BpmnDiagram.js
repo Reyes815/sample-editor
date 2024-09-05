@@ -194,12 +194,7 @@ const BpmnDiagram = () => {
       <div id="canvas" style={{ width: '100%', height: '600px', border: '1px solid black' }}></div>
       <button onClick={saveDiagram}>Save Diagram</button>
       <ImportDiagram onFileSelect={handleFileSelect} />
-      {/* {fileContent && (
-        <div>
-          <h2>Uploaded File Content:</h2>
-          <pre>{fileContent}</pre>
-        </div>
-      )} */}
+      
     </div>
   );
 };
